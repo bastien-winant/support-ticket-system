@@ -116,7 +116,7 @@ def add_ticket():
 
 	title = title.strip() if isinstance(title, str) else ""
 
-	if not title or not title.isalnum():
+	if not title:
 		return jsonify({"error": f"Invalid title: {title!r}"}), 400
 
 	email = _current_user_email()

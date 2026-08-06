@@ -46,12 +46,12 @@
         const resp = await fetch("/queue");
         const data = await resp.json();
         if (!resp.ok) {
-          resultEl.textContent = "Error loading watchlist: " + (data.error || resp.statusText);
+          resultEl.textContent = "Error loading tickets: " + (data.error || resp.statusText);
           return;
         }
 				queueBody.innerHTML = data.map(ticket => {
-					return `<tr><td>${row.title}</td><td>${row.status}</td><td>${row.created_by}</td><td>${row.description}</td></tr>`;
-				})
+					return `<tr><td>${ticket.title}</td><td>${ticket.status}</td><td>${ticket.created_by}</td><td>${ticket.description}</td></tr>`;
+				}).join('')
       } catch (err) {
         resultEl.textContent = "Failed to load tickets: " + err;
       }
@@ -60,13 +60,14 @@
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
       const title = document.getElementById("title").value;
+      const description = document.getElementById("description").value;
       resultEl.textContent = "Adding to queue...";
 
       try {
         const resp = await fetch("/queue", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ title }),
+          body: JSON.stringify({ title, description }),
         });
         const data = await resp.json();
         if (!resp.ok) {
