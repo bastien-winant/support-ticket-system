@@ -4,7 +4,217 @@
   <meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Support Ticket System</title>
-  <style></style>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 2rem;
+      color: #333;
+    }
+
+    h1 {
+      color: white;
+      text-align: center;
+      margin-bottom: 1rem;
+      font-size: 2.5rem;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+    }
+
+    .hint {
+      color: rgba(255, 255, 255, 0.9);
+      text-align: center;
+      margin-bottom: 2rem;
+      font-size: 1.1rem;
+    }
+
+    #ticket-form {
+      background: white;
+      padding: 2rem;
+      border-radius: 12px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+      max-width: 600px;
+      margin: 0 auto 2rem;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 1.5rem;
+    }
+
+    label span {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: 600;
+      color: #555;
+    }
+
+    input[type="text"],
+    textarea {
+      width: 100%;
+      padding: 0.75rem;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-family: inherit;
+      transition: border-color 0.3s;
+    }
+
+    input[type="text"]:focus,
+    textarea:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+
+    textarea {
+      min-height: 100px;
+      resize: vertical;
+    }
+
+    button[type="submit"] {
+      width: 100%;
+      padding: 1rem;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 1.1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    button[type="submit"]:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+
+    button[type="submit"]:active {
+      transform: translateY(0);
+    }
+
+    #result {
+      text-align: center;
+      padding: 1rem;
+      margin-bottom: 1rem;
+      border-radius: 8px;
+      background: white;
+      color: #667eea;
+      font-weight: 500;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    #result:empty {
+      display: none;
+    }
+
+    #queue-table {
+      width: 100%;
+      background: white;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+    }
+
+    #queue-table thead {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    #queue-table th {
+      padding: 1rem;
+      text-align: left;
+      color: white;
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 0.85rem;
+      letter-spacing: 0.5px;
+    }
+
+    #queue-table td {
+      padding: 1rem;
+      border-bottom: 1px solid #f0f0f0;
+    }
+
+    #queue-table tbody tr:hover {
+      background: #f8f9ff;
+    }
+
+    #queue-table tbody tr:last-child td {
+      border-bottom: none;
+    }
+
+    #queue-table button {
+      padding: 0.5rem 1rem;
+      margin-right: 0.5rem;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    #queue-table button:first-of-type {
+      background: #10b981;
+      color: white;
+    }
+
+    #queue-table button:first-of-type:hover:not(:disabled) {
+      background: #059669;
+      transform: translateY(-1px);
+    }
+
+    #queue-table button:last-of-type {
+      background: #ef4444;
+      color: white;
+    }
+
+    #queue-table button:last-of-type:hover {
+      background: #dc2626;
+      transform: translateY(-1px);
+    }
+
+    #queue-table button:disabled {
+      background: #d1d5db;
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+
+    @media (max-width: 768px) {
+      body {
+        padding: 1rem;
+      }
+
+      h1 {
+        font-size: 1.8rem;
+      }
+
+      #ticket-form {
+        padding: 1.5rem;
+      }
+
+      #queue-table {
+        font-size: 0.9rem;
+      }
+
+      #queue-table th,
+      #queue-table td {
+        padding: 0.75rem 0.5rem;
+      }
+
+      #queue-table button {
+        padding: 0.4rem 0.8rem;
+        font-size: 0.85rem;
+        margin-right: 0.25rem;
+      }
+    }
+  </style>
 </head>
 <body>
   <h1>Support Ticket System</h1>
