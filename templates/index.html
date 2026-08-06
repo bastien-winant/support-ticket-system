@@ -186,6 +186,132 @@
       opacity: 0.6;
     }
 
+    /* Modal styles */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal.active {
+      display: flex;
+    }
+
+    .modal-content {
+      background: white;
+      padding: 2rem;
+      border-radius: 12px;
+      max-width: 600px;
+      width: 90%;
+      max-height: 80vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+    }
+
+    .modal-header h2 {
+      color: #667eea;
+      margin: 0;
+    }
+
+    .close-modal {
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      cursor: pointer;
+      color: #999;
+      padding: 0;
+      width: 30px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .close-modal:hover {
+      color: #333;
+    }
+
+    .messages-list {
+      margin-bottom: 1.5rem;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+
+    .message-item {
+      background: #f8f9ff;
+      padding: 1rem;
+      border-radius: 8px;
+      margin-bottom: 0.75rem;
+      border-left: 3px solid #667eea;
+    }
+
+    .message-author {
+      font-weight: 600;
+      color: #667eea;
+      margin-bottom: 0.25rem;
+    }
+
+    .message-text {
+      color: #333;
+      margin-bottom: 0.25rem;
+    }
+
+    .message-date {
+      font-size: 0.85rem;
+      color: #999;
+    }
+
+    .message-form {
+      border-top: 2px solid #f0f0f0;
+      padding-top: 1.5rem;
+    }
+
+    .message-form textarea {
+      width: 100%;
+      min-height: 80px;
+      margin-bottom: 1rem;
+    }
+
+    .message-form button {
+      width: 100%;
+      padding: 0.75rem;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .message-form button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+
+    #queue-table button:nth-of-type(3) {
+      background: #667eea;
+      color: white;
+    }
+
+    #queue-table button:nth-of-type(3):hover {
+      background: #5568d3;
+      transform: translateY(-1px);
+    }
+
     @media (max-width: 768px) {
       body {
         padding: 1rem;
@@ -246,6 +372,21 @@
     <tbody id="queue-body"></tbody>
   </table>
 
+  <!-- Messages Modal -->
+  <div id="messages-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Ticket Messages</h2>
+        <button class="close-modal" onclick="closeMessagesModal()">&times;</button>
+      </div>
+      <div id="messages-list" class="messages-list"></div>
+      <div class="message-form">
+        <textarea id="new-message-text" placeholder="Type your message here..."></textarea>
+        <button onclick="submitMessage()">Send Message</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     const form = document.getElementById("ticket-form");
     const resultEl = document.getElementById("result");
@@ -267,6 +408,7 @@
 						<td>
 							<button onclick="closeTicket(${ticket.ticket_id})" ${ticket.status === 'CLOSED' ? 'disabled' : ''}>Close</button>
 							<button onclick="deleteTicket(${ticket.ticket_id})">Delete</button>
+							<button onclick="openMessagesModal(${ticket.ticket_id}, '${ticket.title}')">Messages</button>
 						</td>
 					</tr>`;
 				}).join('')
@@ -335,6 +477,81 @@
         loadQueue();
       } catch (err) {
         resultEl.textContent = "Failed to delete ticket: " + err;
+      }
+    }
+
+    let currentTicketId = null;
+
+    async function openMessagesModal(ticketId, ticketTitle) {
+      currentTicketId = ticketId;
+      document.querySelector('.modal-header h2').textContent = `Messages for: ${ticketTitle}`;
+      document.getElementById('messages-modal').classList.add('active');
+      await loadMessages(ticketId);
+    }
+
+    function closeMessagesModal() {
+      document.getElementById('messages-modal').classList.remove('active');
+      document.getElementById('new-message-text').value = '';
+      currentTicketId = null;
+    }
+
+    async function loadMessages(ticketId) {
+      try {
+        const resp = await fetch(`/queue/${ticketId}/messages`);
+        const data = await resp.json();
+        const messagesList = document.getElementById('messages-list');
+        
+        if (!resp.ok) {
+          messagesList.innerHTML = `<p style="color: red;">Error loading messages: ${data.error || resp.statusText}</p>`;
+          return;
+        }
+        
+        if (data.length === 0) {
+          messagesList.innerHTML = '<p style="color: #999; text-align: center;">No messages yet. Be the first to add one!</p>';
+          return;
+        }
+        
+        messagesList.innerHTML = data.map(msg => {
+          const date = new Date(msg.created_at).toLocaleString();
+          return `
+            <div class="message-item">
+              <div class="message-author">${msg.author}</div>
+              <div class="message-text">${msg.message_text}</div>
+              <div class="message-date">${date}</div>
+            </div>
+          `;
+        }).join('');
+      } catch (err) {
+        document.getElementById('messages-list').innerHTML = `<p style="color: red;">Failed to load messages: ${err}</p>`;
+      }
+    }
+
+    async function submitMessage() {
+      if (!currentTicketId) return;
+      
+      const messageText = document.getElementById('new-message-text').value.trim();
+      if (!messageText) {
+        alert('Please enter a message');
+        return;
+      }
+      
+      try {
+        const resp = await fetch(`/queue/${currentTicketId}/messages`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message_text: messageText })
+        });
+        const data = await resp.json();
+        
+        if (!resp.ok) {
+          alert("Error adding message: " + (data.error || resp.statusText));
+          return;
+        }
+        
+        document.getElementById('new-message-text').value = '';
+        await loadMessages(currentTicketId);
+      } catch (err) {
+        alert("Failed to add message: " + err);
       }
     }
 
