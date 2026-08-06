@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<title>Support Ticket System</title>
+	</head>
+	<body>
+		<div class="container">
+			<h1>Support Ticket System</h1>
+			<p class="hint">Enter a single ticker symbol. This sends exactly ONE call to the Massive API to fetch the latest price, then adds it to your watchlist.</p>
+
+			<form id="ticket-form">
+				<label for="ticket">Ticket title</label>
+				<input type="text" id="title" name="title" placeholder="Subject line" required>
+				<button type="submit">Submit ticket</button>
+			</form>
+
+			<div id="result"></div>
+
+			<table id="tickets-table">
+				<thead>
+					<tr>
+						<th>Title</th>
+						<th>Email</th>
+						<th>Latest update</th>
+						<th>Status</th>
+					</tr>
+				</thead>
+				<tbody id="tickets-body"></tbody>
+			</table>
+		</div>
+	</body>
+</html>
