@@ -8,11 +8,19 @@
 	<body>
 		<div class="container">
 			<h1>Support Ticket System</h1>
-			<p class="hint">Enter a single ticker symbol. This sends exactly ONE call to the Massive API to fetch the latest price, then adds it to your watchlist.</p>
+			<p class="hint">
+				Enter a single ticker symbol. This sends exactly ONE call to the Massive API to fetch the latest price, then adds it to your watchlist.
+			</p>
 
 			<form id="ticket-form">
-				<label for="ticket">Ticket title</label>
-				<input type="text" id="title" name="title" placeholder="Subject line" required>
+				<label for="title">
+					<span>Title</span>
+					<input type="text" id="title" name="title" placeholder="Subject line" required>
+				</label>
+				<label for="description">
+					<span>Description</span>
+					<textarea id="description" name="description" placeholder="Description" required></textarea>
+				</label>
 				<button type="submit">Submit ticket</button>
 			</form>
 
