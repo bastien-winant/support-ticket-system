@@ -36,49 +36,35 @@ MESSAGE_TABLE_NAME = os.environ.get("MESSAGE_TABLE_NAME", "ticker_news")
 _TICKER_RE = re.compile(r"^[A-Z]{1,10}(\.[A-Z]{1,2})?$")
 
 
-def ensure_table():
-	"""Create the destination table in Lakebase if it doesn't exist yet."""
-	lakebase.run_write(
-		f"""
-		CREATE TABLE IF NOT EXISTS {TABLE_NAME} (
-			id TEXT PRIMARY KEY,
-			payload JSONB NOT NULL,
-			synced_at TIMESTAMPTZ NOT NULL DEFAULT now()
-		);
-		"""
-	)
-
-
 def ensure_queue_table():
 	"""Create the ticket queue table in Lakebase if it doesn't exist yet."""
 	lakebase.run_write(
 		f"""
 		CREATE TABLE IF NOT EXISTS {QUEUE_TABLE_NAME} (
-			symbol TEXT NOT NULL,
-			email TEXT NOT NULL,
-			latest_price NUMERIC,
-			updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-			PRIMARY KEY (symbol, email)
-		)
+			ticket_id SERIAL PRIMARY KEY,
+			title TEXT NOT NULL,
+			description TEXT NOT NULL,
+			status TEXT NOT NULL DEFAULT 'OPEN',
+			created_by TEXT NOT NULL,
+			created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+			updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+		);
 		"""
 	)
 
 
 def ensure_message_table():
 	"""Create the ticket message table in Lakebase if it doesn't exist yet."""
+	ensure_queue_table()
 	lakebase.run_write(
 		f"""
 		CREATE TABLE IF NOT EXISTS {MESSAGE_TABLE_NAME} (
-			id TEXT PRIMARY KEY,
-			symbol TEXT NOT NULL,
-			title TEXT NOT NULL,
-			author TEXT,
-			published_utc TIMESTAMPTZ,
-			article_url TEXT,
-			image_url TEXT,
-			description TEXT,
-			fetched_at TIMESTAMPTZ NOT NULL DEFAULT now()
-		)
+			message_id SERIAL PRIMARY KEY,
+			ticket_id INTEGER REFERENCES {QUEUE_TABLE_NAME}(id),
+			message_text TEXT NOT NULL,
+			author TEXT NOT NULL,
+			created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+		);
 		"""
 	)
 
@@ -125,57 +111,53 @@ def get_queue():
 	ensure_queue_table()
 	email = _current_user_email()
 	rows = lakebase.run_query(
-		f"SELECT symbol, email, latest_price, updated_at FROM {QUEUE_TABLE_NAME} "
-		f"WHERE email = %s ORDER BY symbol ASC",
+		f"SELECT ticket_id, title, description, status, created_by, created_at, updated_at FROM {QUEUE_TABLE_NAME} "
+		f"WHERE created_by = %s ORDER BY created_at DESC",
 		(email,),
 	)
 	return jsonify(rows)
 
 
-@app.route("/queue/<symbol>", methods=["DELETE"])
-def delete_from_queue(symbol):
+@app.route("/queue/<ticket_id>", methods=["DELETE"])
+def delete_from_queue(ticket_id):
 	"""
-	Remove a symbol from the current user's queue.
+	Remove a ticket from the current user's queue.
 	"""
 	ensure_queue_table()
-	email = _current_user_email()
-	symbol = symbol.strip().upper()
 	
-	if not symbol or not _TICKER_RE.match(symbol):
-		return jsonify({"error": f"Invalid ticker symbol: {symbol!r}"}), 400
+	if not ticket_id or not ticket_id.isnumeric():
+		return jsonify({"error": f"Invalid ticket ID: {ticket_id!r}"}), 400
 	
 	lakebase.run_write(
 		f"""
 		DELETE FROM {QUEUE_TABLE_NAME}
-		WHERE symbol = %s AND email = %s
+		WHERE ticket_id = %s
 		""",
-		(symbol, email),
+		(ticket_id),
 	)
 	
-	return jsonify({"symbol": symbol, "deleted": True})
+	return jsonify({"id": ticket_id, "deleted": True})
 
 
-@app.route("/messages/<symbol>", methods=["GET"])
-def get_ticket_messages(symbol):
+@app.route("/messages/<ticket_id>", methods=["GET"])
+def get_ticket_messages(ticket_id):
 	"""
 	Retrieve stored messages for a ticket from the database.
 	"""
 	ensure_message_table()
-	symbol = symbol.strip().upper()
 	
-	if not symbol or not _TICKER_RE.match(symbol):
-		return jsonify({"error": f"Invalid ticker symbol: {symbol!r}"}), 400
+	if not ticket_id or not ticket_id.isnumeric():
+		return jsonify({"error": f"Invalid ticket ID: {ticket_id!r}"}), 400
 	
 	rows = lakebase.run_query(
 		f"""
-		SELECT id, symbol, title, author, published_utc, article_url, 
-						image_url, description, fetched_at
+		SELECT message_id, ticket_id, message_text, author, created_at
 		FROM {MESSAGE_TABLE_NAME}
-		WHERE symbol = %s
-		ORDER BY published_utc DESC
+		WHERE ticket_id = %s
+		ORDER BY created_at DESC
 		LIMIT 20
 		""",
-		(symbol,),
+		(ticket_id,),
 	)
 	return jsonify(rows)
 
@@ -183,105 +165,29 @@ def get_ticket_messages(symbol):
 @app.route("/queue", methods=["POST"])
 def add_to_queue():
 	"""
-	Fetch the latest price for a single stock symbol from Massive using
-	exactly ONE API call (see MassiveClient.get_latest_price), then add/
-	update that symbol on the watchlist in Lakebase.
+	Add the ticket on the queue in Lakebase.
 	"""
 	ensure_queue_table()
 
+	# retrieve ticket details from request
 	if request.is_json:
-		symbol = request.json.get("symbol", "")
+		title = request.json.get("title", "")
+		description = request.json.get("description", "")
 	else:
-		symbol = request.form.get("symbol", "")
-
-	symbol = symbol.strip().upper() if isinstance(symbol, str) else ""
-
-	if not symbol or not _TICKER_RE.match(symbol):
-		return jsonify({"error": f"Invalid ticker symbol: {symbol!r}"}), 400
-
-	client = MassiveClient()
-	try:
-		data = client.get_latest_price(symbol)  # <-- single API call, latest price only
-	except requests.HTTPError:
-		# Massive returns a 404/4xx for tickers it doesn't recognize.
-		return jsonify({"error": f"Unknown ticker symbol: {symbol}"}), 400
-
-	price = _extract_latest_price(data)
-	if price is None:
-		# No usable price in the response (e.g. delisted/invalid ticker
-		# that still 200s with an empty result set) - don't add it.
-		return jsonify({"error": f"No price data available for ticker: {symbol}"}), 400
+		title = request.form.get("title", "")
+		description = request.form.get("description", "")
 
 	email = _current_user_email()
 
 	lakebase.run_write(
 		f"""
-		INSERT INTO {QUEUE_TABLE_NAME} (symbol, email, latest_price, updated_at)
-		VALUES (%s, %s, %s, now())
-		ON CONFLICT (symbol, email) DO UPDATE
-			SET latest_price = EXCLUDED.latest_price,
-					updated_at = EXCLUDED.updated_at
+		INSERT INTO {QUEUE_TABLE_NAME} (title, description, created_by)
+		VALUES (%s, %s, %s)
 		""",
-		(symbol, email, price),
+		(title, description, email),
 	)
 
-	return jsonify({"symbol": symbol, "email": email, "latest_price": price})
-
-
-def _extract_latest_price(data: dict) -> float | None:
-	"""Pull the trade price out of the Massive 'previous close' response shape.
-
-	The /v2/aggs/ticker/{symbol}/prev endpoint returns "results" as a LIST
-	containing a single aggregate bar (not a dict), e.g.:
-			{"status": "OK", "resultsCount": 1, "results": [{"c": 148.845, ...}]}
-	Previously this code treated "results" as a dict, so isinstance(results, dict)
-	was always False for this endpoint's real shape and the price silently
-	resolved to None. Unwrap the list here, and check "status"/"resultsCount"
-	so invalid tickers (empty results) are detected instead of "succeeding"
-	with a null price.
-
-	Adjust the key lookup here if the real Massive API returns a different
-	field name for the traded/close price.
-	"""
-	if not isinstance(data, dict):
-		return None
-	if data.get("status") not in (None, "OK") or data.get("resultsCount") == 0:
-		return None
-	results = data.get("results", data)
-	if isinstance(results, list):
-		results = results[0] if results else None
-	if isinstance(results, dict):
-		for key in ("c", "p", "price", "last_price", "vw"):
-			if key in results:
-				return results[key]
-	return None
-
-
-def _upsert_batch(items: list[dict]) -> int:
-	"""Upsert a batch of Massive API items into Lakebase, one statement per row.
-
-	For very large batches, consider psycopg2.extras.execute_values for
-	higher throughput instead of per-row execute calls.
-	"""
-	import json as _json
-
-	count = 0
-	with lakebase.get_connection() as conn:
-		with conn.cursor() as cur:
-			for item in items:
-					cur.execute(
-							f"""
-							INSERT INTO {TABLE_NAME} (id, payload, synced_at)
-							VALUES (%s, %s, now())
-							ON CONFLICT (id) DO UPDATE
-									SET payload = EXCLUDED.payload,
-											synced_at = EXCLUDED.synced_at
-							""",
-							(str(item.get("id")), _json.dumps(item)),
-					)
-					count += 1
-			conn.commit()
-	return count
+	return jsonify({"title": title, "description": description, "created_by": email})
 
 
 if __name__ == '__main__':
