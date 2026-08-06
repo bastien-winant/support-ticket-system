@@ -108,7 +108,19 @@ def get_queue():
 	return jsonify(rows)
 
 
-@app.route("/queue/<ticket_id>", methods=["PATCH"])
+@app.route("/queue/<ticket_id>", methods=["GET"])
+def get_ticket(ticket_id):
+	"""Return the current user's ticket queue, with their last known status."""
+	ensure_queue_table()
+	rows = lakebase.run_query(
+		f"SELECT ticket_id, title, description, status, created_by, created_at, updated_at FROM {QUEUE_TABLE_NAME} "
+		f"WHERE ticket_id = %s",
+		(ticket_id,),
+	)
+	return jsonify(rows)
+
+
+@app.route("/queue/<ticket_id>/close", methods=["PATCH"])
 def close_ticket(ticket_id):
 	ensure_queue_table()
 	
@@ -143,7 +155,7 @@ def delete_from_queue(ticket_id):
 	return jsonify({"id": ticket_id, "deleted": True})
 
 
-@app.route("/messages/<ticket_id>", methods=["GET"])
+@app.route("/queue/<ticket_id>/messages", methods=["GET"])
 def get_ticket_messages(ticket_id):
 	"""
 	Retrieve stored messages for a ticket from the database.
