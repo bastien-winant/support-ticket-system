@@ -11,14 +11,11 @@ Deploy as a Databricks App using app.yaml.
 
 import logging
 import os
-import re
 
-import requests
 from databricks.sdk import WorkspaceClient
 from flask import Flask, jsonify, render_template, request
 
 import lakebase
-from massive_client import MassiveClient
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("massive-app")
@@ -26,15 +23,8 @@ logger = logging.getLogger("massive-app")
 app = Flask(__name__)
 _w = WorkspaceClient()
 
-TABLE_NAME = os.environ.get("MASSIVE_TABLE_NAME", "massive_records")
 QUEUE_TABLE_NAME = os.environ.get("QUEUE_TABLE_NAME", "watchlist")
 MESSAGE_TABLE_NAME = os.environ.get("MESSAGE_TABLE_NAME", "ticker_news")
-
-# Basic stock ticker shape check: 1-10 uppercase letters, with an optional
-# ".X" or ".XX" share-class suffix (e.g. "BRK.B"). This rejects obviously
-# malformed input before we even call the Massive API.
-_TICKER_RE = re.compile(r"^[A-Z]{1,10}(\.[A-Z]{1,2})?$")
-
 
 def ensure_queue_table():
 	"""Create the ticket queue table in Lakebase if it doesn't exist yet."""
@@ -116,6 +106,20 @@ def get_queue():
 		(email,),
 	)
 	return jsonify(rows)
+
+
+@app.route("/queue/<ticket_id>", methods=["PATCH"])
+def close_ticket(ticket_id):
+	ensure_queue_table()
+	
+	if not ticket_id or not ticket_id.isnumeric():
+		return jsonify({"error": f"Invalid ticket ID: {ticket_id!r}"}), 400
+
+	lakebase.run_write(
+		f"UPDATE {QUEUE_TABLE_NAME} SET status = 'CLOSED' WHERE ticket_id = {ticket_id};",
+		(ticket_id),
+	)
+
 
 
 @app.route("/queue/<ticket_id>", methods=["DELETE"])
