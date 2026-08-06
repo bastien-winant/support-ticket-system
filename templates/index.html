@@ -1,42 +1,87 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-		<meta charset="UTF-8">
-		<meta name="viewport" content="width=device-width, initial-scale=1.0">
-		<title>Support Ticket System</title>
-	</head>
-	<body>
-		<div class="container">
-			<h1>Support Ticket System</h1>
-			<p class="hint">
-				Enter a single ticker symbol. This sends exactly ONE call to the Massive API to fetch the latest price, then adds it to your watchlist.
-			</p>
+<head>
+  <meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Support Ticket System</title>
+  <style></style>
+</head>
+<body>
+  <h1>Support Ticket System</h1>
+  <p class="hint">Raise a single support ticket. This adds a new support ticket to your queue, and to which messages can be added.</p>
 
-			<form id="ticket-form">
-				<label for="title">
-					<span>Title</span>
-					<input type="text" id="title" name="title" placeholder="Subject line" required>
-				</label>
-				<label for="description">
-					<span>Description</span>
-					<textarea id="description" name="description" placeholder="Description" required></textarea>
-				</label>
-				<button type="submit">Submit ticket</button>
-			</form>
+  <form id="ticket-form">
+    <label for="title">
+			<span>Title</span>
+    	<input type="text" id="title" name="title" placeholder="Subject line" required>
+		</label>
+		<label for="description">
+			<span>Description</span>
+			<textarea name="description" id="description" class="description" required></textarea>
+		</label>
+    <button type="submit">Submit ticket</button>
+  </form>
 
-			<div id="result"></div>
+  <div id="result"></div>
 
-			<table id="tickets-table">
-				<thead>
-					<tr>
-						<th>Title</th>
-						<th>Email</th>
-						<th>Latest update</th>
-						<th>Status</th>
-					</tr>
-				</thead>
-				<tbody id="tickets-body"></tbody>
-			</table>
-		</div>
-	</body>
+  <table id="queue-table">
+    <thead>
+      <tr>
+        <th>Title</th>
+        <th>Status</th>
+				<th>Created by</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody id="queue-body"></tbody>
+  </table>
+
+  <script>
+    const form = document.getElementById("ticket-form");
+    const resultEl = document.getElementById("result");
+    const queueBody = document.getElementById("queue-body");
+
+    async function loadQueue() {
+      try {
+        const resp = await fetch("/queue");
+        const data = await resp.json();
+        if (!resp.ok) {
+          resultEl.textContent = "Error loading watchlist: " + (data.error || resp.statusText);
+          return;
+        }
+				queueBody.innerHTML = data.map(ticket => {
+					return `<tr><td>${row.title}</td><td>${row.status}</td><td>${row.created_by}</td><td>${row.description}</td></tr>`;
+				})
+      } catch (err) {
+        resultEl.textContent = "Failed to load tickets: " + err;
+      }
+    }
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const title = document.getElementById("title").value;
+      resultEl.textContent = "Adding to queue...";
+
+      try {
+        const resp = await fetch("/queue", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title }),
+        });
+        const data = await resp.json();
+        if (!resp.ok) {
+          resultEl.textContent = "Error: " + (data.error || resp.statusText);
+          return;
+        }
+				resultEl.textContent = `Opened new ticket: ${data.title}`
+        document.getElementById("ticket-form").reset();
+        loadQueue();
+      } catch (err) {
+        resultEl.textContent = "Request failed: " + err;
+      }
+    });
+
+    loadQueue();
+  </script>
+</body>
 </html>
