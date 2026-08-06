@@ -27,8 +27,8 @@ app = Flask(__name__)
 _w = WorkspaceClient()
 
 TABLE_NAME = os.environ.get("MASSIVE_TABLE_NAME", "massive_records")
-WATCHLIST_TABLE_NAME = os.environ.get("WATCHLIST_TABLE_NAME", "watchlist")
-TICKER_NEWS_TABLE_NAME = os.environ.get("TICKER_NEWS_TABLE_NAME", "ticker_news")
+QUEUE_TABLE_NAME = os.environ.get("QUEUE_TABLE_NAME", "watchlist")
+MESSAGE_TABLE_NAME = os.environ.get("MESSAGE_TABLE_NAME", "ticker_news")
 
 # Basic stock ticker shape check: 1-10 uppercase letters, with an optional
 # ".X" or ".XX" share-class suffix (e.g. "BRK.B"). This rejects obviously
@@ -53,7 +53,7 @@ def ensure_queue_table():
 	"""Create the ticket queue table in Lakebase if it doesn't exist yet."""
 	lakebase.run_write(
 		f"""
-		CREATE TABLE IF NOT EXISTS {WATCHLIST_TABLE_NAME} (
+		CREATE TABLE IF NOT EXISTS {QUEUE_TABLE_NAME} (
 			symbol TEXT NOT NULL,
 			email TEXT NOT NULL,
 			latest_price NUMERIC,
@@ -68,7 +68,7 @@ def ensure_message_table():
 	"""Create the ticket message table in Lakebase if it doesn't exist yet."""
 	lakebase.run_write(
 		f"""
-		CREATE TABLE IF NOT EXISTS {TICKER_NEWS_TABLE_NAME} (
+		CREATE TABLE IF NOT EXISTS {MESSAGE_TABLE_NAME} (
 			id TEXT PRIMARY KEY,
 			symbol TEXT NOT NULL,
 			title TEXT NOT NULL,
@@ -115,45 +115,8 @@ def handle_exception(err):
 
 @app.route("/")
 def index():
-	"""Simple UI to submit a list of stock symbols to sync from Massive."""
+	"""Simple UI to submit a list of support tickets."""
 	return render_template("index.html")
-
-
-@app.route("/records")
-def list_records():
-	"""Read records already synced into Lakebase."""
-	limit = int(request.args.get("limit", 100))
-	rows = lakebase.run_query(
-		f"SELECT id, payload, synced_at FROM {TABLE_NAME} ORDER BY synced_at DESC LIMIT %s",
-		(limit,),
-	)
-	return jsonify(rows)
-
-
-@app.route("/sync", methods=["POST"])
-def sync_from_massive():
-	"""
-	Pull data from the Massive API (paginated, potentially huge dataset) and
-	upsert it into Lakebase in batches.
-	"""
-	ensure_table()
-	client = MassiveClient()
-
-	path = request.json.get("path", "/records") if request.is_json else "/records"
-	batch_size = int(request.args.get("batch_size", 500))
-
-	batch = []
-	total = 0
-	for item in client.paginated_get(path):
-		batch.append(item)
-		if len(batch) >= batch_size:
-			total += _upsert_batch(batch)
-			batch = []
-
-	if batch:
-		total += _upsert_batch(batch)
-
-	return jsonify({"synced": total})
 
 
 @app.route("/queue", methods=["GET"])
@@ -162,7 +125,7 @@ def get_queue():
 	ensure_queue_table()
 	email = _current_user_email()
 	rows = lakebase.run_query(
-		f"SELECT symbol, email, latest_price, updated_at FROM {WATCHLIST_TABLE_NAME} "
+		f"SELECT symbol, email, latest_price, updated_at FROM {QUEUE_TABLE_NAME} "
 		f"WHERE email = %s ORDER BY symbol ASC",
 		(email,),
 	)
@@ -172,7 +135,7 @@ def get_queue():
 @app.route("/queue/<symbol>", methods=["DELETE"])
 def delete_from_queue(symbol):
 	"""
-	Remove a stock symbol from the current user's watchlist.
+	Remove a symbol from the current user's queue.
 	"""
 	ensure_queue_table()
 	email = _current_user_email()
@@ -183,7 +146,7 @@ def delete_from_queue(symbol):
 	
 	lakebase.run_write(
 		f"""
-		DELETE FROM {WATCHLIST_TABLE_NAME}
+		DELETE FROM {QUEUE_TABLE_NAME}
 		WHERE symbol = %s AND email = %s
 		""",
 		(symbol, email),
@@ -193,7 +156,7 @@ def delete_from_queue(symbol):
 
 
 @app.route("/messages/<symbol>", methods=["GET"])
-def get_ticker_news(symbol):
+def get_ticket_messages(symbol):
 	"""
 	Retrieve stored messages for a ticket from the database.
 	"""
@@ -207,7 +170,7 @@ def get_ticker_news(symbol):
 		f"""
 		SELECT id, symbol, title, author, published_utc, article_url, 
 						image_url, description, fetched_at
-		FROM {TICKER_NEWS_TABLE_NAME}
+		FROM {MESSAGE_TABLE_NAME}
 		WHERE symbol = %s
 		ORDER BY published_utc DESC
 		LIMIT 20
@@ -253,11 +216,11 @@ def add_to_queue():
 
 	lakebase.run_write(
 		f"""
-		INSERT INTO {WATCHLIST_TABLE_NAME} (symbol, email, latest_price, updated_at)
+		INSERT INTO {QUEUE_TABLE_NAME} (symbol, email, latest_price, updated_at)
 		VALUES (%s, %s, %s, now())
 		ON CONFLICT (symbol, email) DO UPDATE
-				SET latest_price = EXCLUDED.latest_price,
-						updated_at = EXCLUDED.updated_at
+			SET latest_price = EXCLUDED.latest_price,
+					updated_at = EXCLUDED.updated_at
 		""",
 		(symbol, email, price),
 	)
