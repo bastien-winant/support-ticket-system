@@ -380,6 +380,7 @@
         <th>Title</th>
         <th>Status</th>
 				<th>Created by</th>
+        <th>Created</th>
         <th>Actions</th>
       </tr>
     </thead>
@@ -416,10 +417,12 @@
         }
 				queueBody.innerHTML = data.map(ticket => {
 					const closedClass = ticket.status === 'CLOSED' ? ' class="closed-ticket"' : '';
+					const createdDate = new Date(ticket.created_at).toLocaleDateString();
 					return `<tr${closedClass}>
 						<td>${ticket.title}</td>
 						<td>${ticket.status}</td>
 						<td>${ticket.created_by}</td>
+						<td>${createdDate}</td>
 						<td>
 							<button onclick="closeTicket(${ticket.ticket_id})" ${ticket.status === 'CLOSED' ? 'disabled' : ''}>Close</button>
 							<button onclick="deleteTicket(${ticket.ticket_id})">Delete</button>
