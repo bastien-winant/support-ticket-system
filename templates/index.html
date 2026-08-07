@@ -13,25 +13,33 @@
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
-      background: #f5f5f5;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       min-height: 100vh;
-      padding: 2rem;
-      color: #333;
+      padding: 3rem 2rem;
+      color: #1a202c;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
     }
 
     h1 {
-      color: #2c3e50;
+      color: white;
       text-align: center;
-      margin-bottom: 1rem;
-      font-size: 2rem;
-      font-weight: 600;
+      margin-bottom: 0.5rem;
+      font-size: 2.5rem;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
 
     .hint {
-      color: #666;
+      color: rgba(255, 255, 255, 0.9);
       text-align: center;
-      margin-bottom: 2rem;
-      font-size: 1rem;
+      margin-bottom: 3rem;
+      font-size: 1.05rem;
+      font-weight: 400;
     }
 
     #ticket-form {
@@ -145,60 +153,77 @@
       border-bottom: 1px solid #f0f0f0;
     }
 
+    #queue-table tbody tr {
+      transition: all 0.2s ease;
+    }
+
+    #queue-table tbody tr:nth-child(even) {
+      background: #f8fafc;
+    }
+
     #queue-table tbody tr:hover {
-      background: #f8f9ff;
+      background: #eef2ff;
+      transform: scale(1.01);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.1);
     }
 
     #queue-table tbody tr:last-child td {
       border-bottom: none;
     }
 
-    #queue-table tbody tr.closed-ticket {
-      background: #f9f9f9;
-      opacity: 0.7;
-    }
-
-    #queue-table tbody tr.closed-ticket td {
-      color: #999;
-    }
-
-    #queue-table tbody tr.closed-ticket:hover {
-      background: #f4f4f4;
-    }
+    /* Closed tickets have no special styling - only the pill color differs */
 
     #queue-table button {
-      padding: 0.5rem 1rem;
+      padding: 0.6rem 1.1rem;
       margin-right: 0.5rem;
+      margin-bottom: 0.5rem;
       border: none;
-      border-radius: 6px;
-      font-size: 0.9rem;
-      font-weight: 500;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
       cursor: pointer;
-      transition: all 0.2s;
+      transition: all 0.2s ease;
+      white-space: nowrap;
     }
 
     #queue-table button:first-of-type {
-      background: #5a6c7d;
+      background: #667eea;
       color: white;
     }
 
     #queue-table button:first-of-type:hover:not(:disabled) {
-      background: #4a5c6d;
+      background: #5568d3;
+      transform: translateY(-1px);
+      box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
     }
 
-    #queue-table button:last-of-type {
-      background: #7f8c8d;
+    #queue-table button:nth-of-type(2) {
+      background: #feb2b2;
+      color: #7f1d1d;
+    }
+
+    #queue-table button:nth-of-type(2):hover {
+      background: #fca5a5;
+      transform: translateY(-1px);
+      box-shadow: 0 2px 8px rgba(254, 178, 178, 0.4);
+    }
+
+    #queue-table button:nth-of-type(3) {
+      background: #4fd1c5;
       color: white;
     }
 
-    #queue-table button:last-of-type:hover {
-      background: #6c7a7b;
+    #queue-table button:nth-of-type(3):hover {
+      background: #38b2ac;
+      transform: translateY(-1px);
+      box-shadow: 0 2px 8px rgba(79, 209, 197, 0.3);
     }
 
     #queue-table button:disabled {
-      background: #d1d5db;
+      background: #cbd5e0;
       cursor: not-allowed;
-      opacity: 0.6;
+      opacity: 0.5;
+      transform: none !important;
     }
 
     /* Modal styles */
@@ -317,13 +342,24 @@
       background: #34495e;
     }
 
-    #queue-table button:nth-of-type(3) {
-      background: #34495e;
+    .status-badge {
+      display: inline-block;
+      padding: 0.4rem 1rem;
+      border-radius: 20px;
+      font-weight: 600;
+      font-size: 0.85rem;
+      text-align: center;
+      min-width: 80px;
+    }
+
+    .status-badge.open {
+      background: #f59e0b;
       color: white;
     }
 
-    #queue-table button:nth-of-type(3):hover {
-      background: #2c3e50;
+    .status-badge.closed {
+      background: #10b981;
+      color: white;
     }
 
     @media (max-width: 768px) {
@@ -419,14 +455,14 @@
 					const closedClass = ticket.status === 'CLOSED' ? ' class="closed-ticket"' : '';
 					const createdDate = new Date(ticket.created_at).toLocaleDateString();
 					return `<tr${closedClass}>
-						<td>${ticket.title}</td>
-						<td>${ticket.status}</td>
+						<td><strong>${ticket.title}</strong></td>
+						<td><span class="status-badge ${ticket.status.toLowerCase()}">${ticket.status}</span></td>
 						<td>${ticket.created_by}</td>
 						<td>${createdDate}</td>
 						<td>
-							<button onclick="closeTicket(${ticket.ticket_id})" ${ticket.status === 'CLOSED' ? 'disabled' : ''}>Close</button>
-							<button onclick="deleteTicket(${ticket.ticket_id})">Delete</button>
-							<button onclick="openMessagesModal(${ticket.ticket_id}, '${ticket.title}')">Messages</button>
+							<button onclick="closeTicket(${ticket.ticket_id})" ${ticket.status === 'CLOSED' ? 'disabled' : ''}>✓ Close</button>
+							<button onclick="deleteTicket(${ticket.ticket_id})">✕ Delete</button>
+							<button onclick="openMessagesModal(${ticket.ticket_id}, '${ticket.title}')">💬 Messages</button>
 						</td>
 					</tr>`;
 				}).join('')
