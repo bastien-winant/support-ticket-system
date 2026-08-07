@@ -4,7 +4,393 @@
   <meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Support Ticket System</title>
-  <style></style>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 3rem 2rem;
+      color: #1a202c;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      color: white;
+      text-align: center;
+      margin-bottom: 0.5rem;
+      font-size: 2.5rem;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .hint {
+      color: rgba(255, 255, 255, 0.9);
+      text-align: center;
+      margin-bottom: 3rem;
+      font-size: 1.05rem;
+      font-weight: 400;
+    }
+
+    #ticket-form {
+      background: white;
+      padding: 2rem;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      max-width: 600px;
+      margin: 0 auto 2rem;
+      border: 1px solid #e0e0e0;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 1.5rem;
+    }
+
+    label span {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: 600;
+      color: #555;
+    }
+
+    input[type="text"],
+    textarea {
+      width: 100%;
+      padding: 0.75rem;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-family: inherit;
+      transition: border-color 0.3s;
+    }
+
+    input[type="text"]:focus,
+    textarea:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+
+    textarea {
+      min-height: 100px;
+      resize: vertical;
+    }
+
+    button[type="submit"] {
+      width: 100%;
+      padding: 1rem;
+      background: #2c3e50;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 1rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    button[type="submit"]:hover {
+      background: #34495e;
+    }
+
+    button[type="submit"]:active {
+      transform: translateY(0);
+    }
+
+    #result {
+      text-align: center;
+      padding: 1rem;
+      margin: 0 auto 1rem;
+      border-radius: 6px;
+      background: white;
+      color: #2c3e50;
+      font-weight: 500;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      max-width: 900px;
+      border: 1px solid #e0e0e0;
+    }
+
+    #result:empty {
+      display: none;
+    }
+
+    #queue-table {
+      max-width: 900px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      border: 1px solid #e0e0e0;
+    }
+
+    #queue-table thead {
+      background: #2c3e50;
+    }
+
+    #queue-table th {
+      padding: 1rem;
+      text-align: left;
+      color: white;
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 0.85rem;
+      letter-spacing: 0.5px;
+    }
+
+    #queue-table td {
+      padding: 1rem;
+      border-bottom: 1px solid #f0f0f0;
+    }
+
+    #queue-table tbody tr {
+      transition: all 0.2s ease;
+    }
+
+    #queue-table tbody tr:nth-child(even) {
+      background: #f8fafc;
+    }
+
+    #queue-table tbody tr:hover {
+      background: #eef2ff;
+      transform: scale(1.01);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.1);
+    }
+
+    #queue-table tbody tr:last-child td {
+      border-bottom: none;
+    }
+
+    /* Closed tickets have no special styling - only the pill color differs */
+
+    #queue-table button {
+      padding: 0.6rem 1.1rem;
+      margin-right: 0.5rem;
+      margin-bottom: 0.5rem;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+    }
+
+    #queue-table button:first-of-type {
+      background: #667eea;
+      color: white;
+    }
+
+    #queue-table button:first-of-type:hover:not(:disabled) {
+      background: #5568d3;
+      transform: translateY(-1px);
+      box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+    }
+
+    #queue-table button:nth-of-type(2) {
+      background: #feb2b2;
+      color: #7f1d1d;
+    }
+
+    #queue-table button:nth-of-type(2):hover {
+      background: #fca5a5;
+      transform: translateY(-1px);
+      box-shadow: 0 2px 8px rgba(254, 178, 178, 0.4);
+    }
+
+    #queue-table button:nth-of-type(3) {
+      background: #4fd1c5;
+      color: white;
+    }
+
+    #queue-table button:nth-of-type(3):hover {
+      background: #38b2ac;
+      transform: translateY(-1px);
+      box-shadow: 0 2px 8px rgba(79, 209, 197, 0.3);
+    }
+
+    #queue-table button:disabled {
+      background: #cbd5e0;
+      cursor: not-allowed;
+      opacity: 0.5;
+      transform: none !important;
+    }
+
+    /* Modal styles */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal.active {
+      display: flex;
+    }
+
+    .modal-content {
+      background: white;
+      padding: 2rem;
+      border-radius: 12px;
+      max-width: 600px;
+      width: 90%;
+      max-height: 80vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+    }
+
+    .modal-header h2 {
+      color: #2c3e50;
+      margin: 0;
+    }
+
+    .close-modal {
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      cursor: pointer;
+      color: #999;
+      padding: 0;
+      width: 30px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .close-modal:hover {
+      color: #333;
+    }
+
+    .messages-list {
+      margin-bottom: 1.5rem;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+
+    .message-item {
+      background: #f8f9fa;
+      padding: 1rem;
+      border-radius: 6px;
+      margin-bottom: 0.75rem;
+      border-left: 3px solid #2c3e50;
+    }
+
+    .message-author {
+      font-weight: 600;
+      color: #2c3e50;
+      margin-bottom: 0.25rem;
+    }
+
+    .message-text {
+      color: #333;
+      margin-bottom: 0.25rem;
+    }
+
+    .message-date {
+      font-size: 0.85rem;
+      color: #999;
+    }
+
+    .message-form {
+      border-top: 2px solid #f0f0f0;
+      padding-top: 1.5rem;
+    }
+
+    .message-form textarea {
+      width: 100%;
+      min-height: 80px;
+      margin-bottom: 1rem;
+    }
+
+    .message-form button {
+      width: 100%;
+      padding: 0.75rem;
+      background: #2c3e50;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .message-form button:hover {
+      background: #34495e;
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 0.4rem 1rem;
+      border-radius: 20px;
+      font-weight: 600;
+      font-size: 0.85rem;
+      text-align: center;
+      min-width: 80px;
+    }
+
+    .status-badge.open {
+      background: #f59e0b;
+      color: white;
+    }
+
+    .status-badge.closed {
+      background: #10b981;
+      color: white;
+    }
+
+    @media (max-width: 768px) {
+      body {
+        padding: 1rem;
+      }
+
+      h1 {
+        font-size: 1.8rem;
+      }
+
+      #ticket-form {
+        padding: 1.5rem;
+      }
+
+      #queue-table {
+        font-size: 0.9rem;
+      }
+
+      #queue-table th,
+      #queue-table td {
+        padding: 0.75rem 0.5rem;
+      }
+
+      #queue-table button {
+        padding: 0.4rem 0.8rem;
+        font-size: 0.85rem;
+        margin-right: 0.25rem;
+      }
+    }
+  </style>
 </head>
 <body>
   <h1>Support Ticket System</h1>
@@ -30,11 +416,27 @@
         <th>Title</th>
         <th>Status</th>
 				<th>Created by</th>
-        <th>Description</th>
+        <th>Created</th>
+        <th>Actions</th>
       </tr>
     </thead>
     <tbody id="queue-body"></tbody>
   </table>
+
+  <!-- Messages Modal -->
+  <div id="messages-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Ticket Messages</h2>
+        <button class="close-modal" onclick="closeMessagesModal()">&times;</button>
+      </div>
+      <div id="messages-list" class="messages-list"></div>
+      <div class="message-form">
+        <textarea id="new-message-text" placeholder="Type your message here..."></textarea>
+        <button onclick="submitMessage()">Send Message</button>
+      </div>
+    </div>
+  </div>
 
   <script>
     const form = document.getElementById("ticket-form");
@@ -46,12 +448,24 @@
         const resp = await fetch("/queue");
         const data = await resp.json();
         if (!resp.ok) {
-          resultEl.textContent = "Error loading watchlist: " + (data.error || resp.statusText);
+          resultEl.textContent = "Error loading tickets: " + (data.error || resp.statusText);
           return;
         }
 				queueBody.innerHTML = data.map(ticket => {
-					return `<tr><td>${row.title}</td><td>${row.status}</td><td>${row.created_by}</td><td>${row.description}</td></tr>`;
-				})
+					const closedClass = ticket.status === 'CLOSED' ? ' class="closed-ticket"' : '';
+					const createdDate = new Date(ticket.created_at).toLocaleDateString();
+					return `<tr${closedClass}>
+						<td><strong>${ticket.title}</strong></td>
+						<td><span class="status-badge ${ticket.status.toLowerCase()}">${ticket.status}</span></td>
+						<td>${ticket.created_by}</td>
+						<td>${createdDate}</td>
+						<td>
+							<button onclick="closeTicket(${ticket.ticket_id})" ${ticket.status === 'CLOSED' ? 'disabled' : ''}>✓ Close</button>
+							<button onclick="deleteTicket(${ticket.ticket_id})">✕ Delete</button>
+							<button onclick="openMessagesModal(${ticket.ticket_id}, '${ticket.title}')">💬 Messages</button>
+						</td>
+					</tr>`;
+				}).join('')
       } catch (err) {
         resultEl.textContent = "Failed to load tickets: " + err;
       }
@@ -60,13 +474,14 @@
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
       const title = document.getElementById("title").value;
+      const description = document.getElementById("description").value;
       resultEl.textContent = "Adding to queue...";
 
       try {
         const resp = await fetch("/queue", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ title }),
+          body: JSON.stringify({ title, description }),
         });
         const data = await resp.json();
         if (!resp.ok) {
@@ -80,6 +495,119 @@
         resultEl.textContent = "Request failed: " + err;
       }
     });
+
+    async function closeTicket(ticketId) {
+      if (!confirm('Are you sure you want to close this ticket?')) return;
+      
+      try {
+        const resp = await fetch(`/queue/${ticketId}`, {
+          method: "PATCH"
+        });
+        const data = await resp.json();
+        if (!resp.ok) {
+          resultEl.textContent = "Error closing ticket: " + (data.error || resp.statusText);
+          return;
+        }
+        resultEl.textContent = "Ticket closed successfully";
+        loadQueue();
+      } catch (err) {
+        resultEl.textContent = "Failed to close ticket: " + err;
+      }
+    }
+
+    async function deleteTicket(ticketId) {
+      if (!confirm('Are you sure you want to delete this ticket? This action cannot be undone.')) return;
+      
+      try {
+        const resp = await fetch(`/queue/${ticketId}`, {
+          method: "DELETE"
+        });
+        const data = await resp.json();
+        if (!resp.ok) {
+          resultEl.textContent = "Error deleting ticket: " + (data.error || resp.statusText);
+          return;
+        }
+        resultEl.textContent = "Ticket deleted successfully";
+        loadQueue();
+      } catch (err) {
+        resultEl.textContent = "Failed to delete ticket: " + err;
+      }
+    }
+
+    let currentTicketId = null;
+
+    async function openMessagesModal(ticketId, ticketTitle) {
+      currentTicketId = ticketId;
+      document.querySelector('.modal-header h2').textContent = `Messages for: ${ticketTitle}`;
+      document.getElementById('messages-modal').classList.add('active');
+      await loadMessages(ticketId);
+    }
+
+    function closeMessagesModal() {
+      document.getElementById('messages-modal').classList.remove('active');
+      document.getElementById('new-message-text').value = '';
+      currentTicketId = null;
+    }
+
+    async function loadMessages(ticketId) {
+      try {
+        const resp = await fetch(`/queue/${ticketId}/messages`);
+        const data = await resp.json();
+        const messagesList = document.getElementById('messages-list');
+        
+        if (!resp.ok) {
+          messagesList.innerHTML = `<p style="color: red;">Error loading messages: ${data.error || resp.statusText}</p>`;
+          return;
+        }
+        
+        if (data.length === 0) {
+          messagesList.innerHTML = '<p style="color: #999; text-align: center;">No messages yet. Be the first to add one!</p>';
+          return;
+        }
+        
+        messagesList.innerHTML = data.map(msg => {
+          const date = new Date(msg.created_at).toLocaleString();
+          return `
+            <div class="message-item">
+              <div class="message-author">${msg.author}</div>
+              <div class="message-text">${msg.message_text}</div>
+              <div class="message-date">${date}</div>
+            </div>
+          `;
+        }).join('');
+      } catch (err) {
+        document.getElementById('messages-list').innerHTML = `<p style="color: red;">Failed to load messages: ${err}</p>`;
+      }
+    }
+
+    async function submitMessage() {
+      if (!currentTicketId) return;
+      
+      const messageText = document.getElementById('new-message-text').value.trim();
+      if (!messageText) {
+        alert('Please enter a message');
+        return;
+      }
+      
+      try {
+        const resp = await fetch(`/queue/${currentTicketId}/messages`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message_text: messageText })
+        });
+        const data = await resp.json();
+        
+        if (!resp.ok) {
+          alert("Error adding message: " + (data.error || resp.statusText));
+          return;
+        }
+        
+        document.getElementById('new-message-text').value = '';
+        await loadMessages(currentTicketId);
+      } catch (err) {
+        alert("Failed to add message: " + err);
+      }
+    }
 
     loadQueue();
   </script>

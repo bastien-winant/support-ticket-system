@@ -116,7 +116,7 @@ def add_ticket():
 
 	title = title.strip() if isinstance(title, str) else ""
 
-	if not title or not title.isalnum():
+	if not title:
 		return jsonify({"error": f"Invalid title: {title!r}"}), 400
 
 	email = _current_user_email()
@@ -185,6 +185,39 @@ def get_messages(ticket_id):
 		(ticket_id,),
 	)
 	return jsonify(rows)
+
+
+@app.route("/queue/<ticket_id>/messages", methods=["POST"])
+def add_message(ticket_id):
+	"""
+	Add a message to a ticket in Lakebase.
+	"""
+	ensure_message_table()
+	
+	if not ticket_id or not ticket_id.isnumeric():
+		return jsonify({"error": f"Invalid ticket ID: {ticket_id!r}"}), 400
+	
+	if request.is_json:
+		message_text = request.json.get("message_text", "")
+	else:
+		message_text = request.form.get("message_text", "")
+	
+	message_text = message_text.strip() if isinstance(message_text, str) else ""
+	
+	if not message_text:
+		return jsonify({"error": "Message text is required"}), 400
+	
+	email = _current_user_email()
+	
+	lakebase.run_write(
+		f"""
+		INSERT INTO {MESSAGE_TABLE_NAME} (ticket_id, message_text, author)
+		VALUES (%s, %s, %s)
+		""",
+		(ticket_id, message_text, email),
+	)
+	
+	return jsonify({"ticket_id": ticket_id, "message_text": message_text, "author": email})
 
 
 if __name__ == '__main__':
